@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>阻燃測試工具</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: #111827; overflow: hidden; }
+body { color: #e5e7eb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+/* ── Screen system ── */
+#app { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.screen {
+  position: absolute; inset: 0;
+  display: none; flex-direction: column;
+  padding: 28px 18px 36px;
+  overflow-y: auto; background: #111827;
+}
+.screen.active { display: flex; }
+
+/* ── Common ── */
+.page-title { font-size: 24px; font-weight: 800; color: #f9fafb; text-align: center; margin-bottom: 28px; }
+
+.action-btn {
+  width: 100%; border: none; border-radius: 12px;
+  color: #fff; font-size: 17px; font-weight: 700; padding: 16px; cursor: pointer;
+  background: #2563eb; flex-shrink: 0;
+}
+.action-btn:active { opacity: .85; }
+.action-btn.green  { background: #059669; }
+.action-btn.green:active { background: #047857; }
+
+/* ── Top bar ── */
+.top-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-shrink: 0; }
+.top-meta { font-size: 13px; color: #e5e7eb; line-height: 1.6; font-weight: 600; }
+.top-meta strong { color: #f9fafb; }
+.link-btn {
+  background: #059669; border: none; border-radius: 8px;
+  color: #fff; font-size: 12px; font-weight: 600; padding: 6px 12px; cursor: pointer; flex-shrink: 0;
+}
+.link-btn:active { background: #047857; }
+
+/* ── Batch form ── */
+.form-grid { display: grid; gap: 12px; margin-bottom: 20px; }
+.form-row { display: flex; align-items: center; gap: 10px; }
+.form-row label { font-size: 13px; color: #9ca3af; width: 62px; flex-shrink: 0; text-align: right; }
+.form-row input {
+  flex: 1; background: #1f2937; border: 1px solid #374151; border-radius: 9px;
+  color: #f3f4f6; font-size: 15px; padding: 11px 13px; outline: none;
+}
+.form-row input:focus { border-color: #3b82f6; }
+input[type="date"] { color-scheme: dark; }
+input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; appearance: none; }
+
+/* ── GAS Settings ── */
+.gas-section { background: #1f2937; border-radius: 12px; margin-bottom: 16px; overflow: hidden; flex-shrink: 0; }
+.gas-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 16px; cursor: pointer; user-select: none;
+}
+.gas-toggle-left { font-size: 13px; font-weight: 600; color: #d1d5db; }
+.gas-dot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; flex-shrink: 0; }
+.gas-dot.ok { background: #10b981; }
+.gas-body { padding: 0 16px 16px; border-top: 1px solid #374151; }
+.gas-step { font-size: 12px; color: #6b7280; margin: 10px 0 6px; line-height: 1.6; }
+.gas-code {
+  background: #0f172a; border-radius: 8px; padding: 10px; font-size: 11px;
+  color: #86efac; font-family: monospace; white-space: pre; overflow-x: auto;
+  margin-bottom: 10px; max-height: 120px;
+}
+.gas-input-row { display: flex; gap: 8px; margin-top: 10px; }
+.gas-input-row input {
+  flex: 1; background: #374151; border: 1px solid #4b5563; border-radius: 8px;
+  color: #f3f4f6; font-size: 13px; padding: 9px 12px; outline: none;
+}
+.gas-save-btn {
+  background: #2563eb; border: none; border-radius: 8px;
+  color: #fff; font-size: 13px; font-weight: 600; padding: 9px 14px; cursor: pointer; flex-shrink: 0;
+}
+
+/* ── Specimen badge ── */
+.spec-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 8px; flex-shrink: 0; }
+.spec-num { font-size: 28px; font-weight: 800; color: #f9fafb; }
+.type-badge { padding: 4px 14px; border-radius: 20px; font-size: 14px; font-weight: 700; }
+.type-badge.first  { background: #1e3a8a; color: #93c5fd; }
+.type-badge.second { background: #451a03; color: #fbbf24; }
+
+/* ── Timer ── */
+.timer-num { font-size: 108px; font-weight: 800; color: #f9fafb; text-align: center; line-height: 1; flex-shrink: 0; }
+.timer-num.up { color: #f59e0b; }
+.timer-unit { font-size: 22px; color: #6b7280; margin-bottom: 10px; flex-shrink: 0; }
+.timer-hint { font-size: 14px; color: #6b7280; text-align: center; flex-shrink: 0; }
+
+/* ── Warning bar ── */
+.warn-bar {
+  background: #78350f44; border: 1px solid #d9770666; border-radius: 10px;
+  color: #fcd34d; font-size: 14px; padding: 10px; text-align: center;
+  animation: pulse .8s infinite; flex-shrink: 0;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+/* ── Circle button ── */
+.circle-wrap { display: flex; justify-content: center; flex-shrink: 0; }
+.circle-btn {
+  width: 188px; height: 188px; border-radius: 50%; border: none;
+  font-size: 20px; font-weight: 700; color: #fff; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px; box-shadow: 0 8px 32px #0008; user-select: none; transition: transform .12s;
+}
+.circle-btn:active { transform: scale(.92); }
+.circle-btn .icon { font-size: 38px; line-height: 1; }
+.btn-blue   { background: radial-gradient(circle at 38% 34%, #3b82f6, #1d4ed8); }
+.btn-red    { background: radial-gradient(circle at 38% 34%, #ef4444, #b91c1c); }
+.btn-orange { background: radial-gradient(circle at 38% 34%, #f59e0b, #b45309); }
+
+/* ── Data fields ── */
+.data-field { background: #1f2937; border-radius: 13px; padding: 18px 16px; margin-bottom: 10px; flex-shrink: 0; }
+.field-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.field-name { font-size: 15px; font-weight: 600; color: #d1d5db; }
+.field-ref  { font-size: 20px; font-weight: 700; color: #f59e0b; }
+.stepper { display: flex; align-items: center; justify-content: center; gap: 16px; }
+.step-btn {
+  width: 52px; height: 52px; border-radius: 50%; border: 2px solid #374151;
+  background: #374151; color: #e5e7eb; font-size: 26px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  user-select: none; flex-shrink: 0;
+}
+.step-btn:active { background: #4b5563; }
+.step-val { font-size: 42px; font-weight: 800; color: #f9fafb; min-width: 58px; text-align: center; }
+.field-sub { font-size: 14px; color: #a3e635; text-align: center; margin-top: 12px; font-weight: 600; }
+.no-flame-btn {
+  width: 100%; background: #374151; border: 1px solid #4b5563; border-radius: 9px;
+  color: #9ca3af; font-size: 14px; padding: 10px; cursor: pointer; margin-top: 12px;
+}
+.no-flame-btn.on { background: #064e3b; border-color: #10b981; color: #6ee7b7; }
+.no-flame-btn:active { opacity: .75; }
+.divider { border: none; border-top: 1px solid #374151; margin: 16px 0; flex-shrink: 0; }
+
+/* ── Upload status toast ── */
+.toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: #1f2937; border: 1px solid #374151; border-radius: 10px;
+  color: #e5e7eb; font-size: 13px; padding: 10px 18px;
+  white-space: nowrap; z-index: 999; opacity: 0;
+  transition: opacity .3s;
+}
+.toast.show { opacity: 1; }
+.toast.ok   { border-color: #10b981; color: #6ee7b7; }
+.toast.err  { border-color: #ef4444; color: #fca5a5; }
+
+/* ── Records ── */
+.rec-header { font-size: 13px; color: #6b7280; margin: 20px 0 10px; flex-shrink: 0; }
+.rec-header span { color: #d1d5db; font-weight: 600; }
+
+.batch-group { background: #1f2937; border-radius: 12px; margin-bottom: 10px; overflow: hidden; flex-shrink: 0; }
+.batch-hdr { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; cursor: pointer; user-select: none; }
+.batch-hdr-meta h3 { font-size: 14px; font-weight: 700; color: #e5e7eb; }
+.batch-hdr-meta p  { font-size: 11px; color: #6b7280; margin-top: 2px; }
+.chevron { color: #6b7280; transition: transform .2s; }
+.collapsed .chevron { transform: rotate(-90deg); }
+
+.spec-card {
+  border-top: 1px solid #374151;
+  padding: 10px 14px;
+}
+
+
+.spec-card-head {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
+}
+.spec-rnum { font-size: 14px; font-weight: 700; color: #f9fafb; }
+.del-btn {
+  background: #7f1d1d; border: none; border-radius: 6px;
+  color: #fca5a5; font-size: 12px; padding: 4px 9px; cursor: pointer;
+}
+.del-btn:active { background: #991b1b; }
+
+.test-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+.test-label { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
+.test-label.first  { background: #1e3a8a; color: #93c5fd; }
+.test-label.second { background: #451a03; color: #fbbf24; }
+.test-data { font-size: 12px; color: #9ca3af; display: flex; gap: 10px; }
+.test-data b { color: #e5e7eb; font-weight: 600; }
+.test-pending { font-size: 12px; color: #4b5563; font-style: italic; }
+
+/* ── Upload indicator ── */
+.upload-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  display: inline-block; margin-left: 6px; vertical-align: middle;
+}
+.upload-dot.pending { background: #f59e0b; animation: pulse .8s infinite; }
+.upload-dot.ok      { background: #10b981; }
+.upload-dot.err     { background: #ef4444; }
+
+/* ── Center helper ── */
+.v-center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══ 0：批次資訊 ══ -->
+<div class="screen active" id="s0">
+  <div class="page-title">阻燃測試工具</div>
+  <div class="form-grid">
+    <div class="form-row"><label>測試日期</label><input type="date" id="testDate"></div>
+    <div class="form-row"><label>阻燃批號</label><input type="text" id="batchNo" placeholder="請輸入批號"></div>
+    <div class="form-row"><label>客　　戶</label><input type="text" id="client" placeholder="請輸入客戶名稱"></div>
+    <div class="form-row"><label>規　　格</label><input type="text" id="spec" placeholder="請輸入規格"></div>
+    <div class="form-row"><label>顏　　色</label><input type="text" id="color" placeholder="請輸入顏色"></div>
+    <div class="form-row"><label>起始 R 數</label><input type="number" id="startR" value="1" min="1"></div>
+  </div>
+  <button class="action-btn" style="margin-bottom:16px;" onclick="confirmBatch()">確定，開始測試</button>
+
+  <!-- GAS 設定 -->
+  <div class="gas-section">
+    <div class="gas-toggle" onclick="toggleGas()">
+      <span class="gas-toggle-left">⚙ Google Sheet 設定</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span id="gasStatusTxt" style="font-size:12px;color:#6b7280;">未設定</span>
+        <div class="gas-dot" id="gasDot"></div>
+      </div>
+    </div>
+    <div class="gas-body hidden" id="gasBody">
+      <div class="gas-step">① 開啟目標 Google Sheet → 擴充功能 → Apps Script<br>② 貼上以下程式碼 → 儲存<br>③ 部署 → 新增部署 → 類型選「網路應用程式」<br>　　執行身分：我、存取權：任何人 → 部署 → 複製網址<br>④ 將網址貼到下方欄位儲存</div>
+      <div class="gas-code" id="gasCodeBox"></div>
+      <div class="gas-input-row">
+        <input type="url" id="gasUrlInput" placeholder="貼上 Apps Script 部署網址">
+        <button class="gas-save-btn" onclick="saveGasUrl()">儲存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="rec-header">已紀錄 <span id="recCount0">0</span> 筆</div>
+  <div id="recSection0"></div>
+  <div style="height:24px;"></div>
+</div>
+
+<!-- ══ 1：待機 ══ -->
+<div class="screen" id="s1">
+  <div class="top-bar">
+    <div class="top-meta">
+      <div id="topBatchNo">批號 —</div>
+      <div id="topClient">客戶 —</div>
+    </div>
+    <button class="link-btn" onclick="goNewBatch()">換批次</button>
+  </div>
+  <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:20px 0 24px;">
+    <div class="spec-row">
+      <span class="spec-num" id="specNo1">#01</span>
+      <span class="type-badge first" id="badge1">第一次</span>
+    </div>
+    <div class="timer-hint">按下開始進行 12 秒燃燒計時</div>
+    <div class="circle-wrap">
+      <button class="circle-btn btn-blue" onclick="startCountdown()">
+        <span class="icon">▶</span><span>開始計時</span>
+      </button>
+    </div>
+  </div>
+  <div class="rec-header">已紀錄 <span id="recCount1">0</span> 筆</div>
+  <div id="recSection1"></div>
+  <div style="height:24px;"></div>
+</div>
+
+<!-- ══ 2：倒數 ══ -->
+<div class="screen" id="s2">
+  <div class="v-center">
+    <div class="spec-row">
+      <span class="spec-num" id="specNo2">#01</span>
+      <span class="type-badge first" id="badge2">第一次</span>
+    </div>
+    <div class="timer-hint">燃燒計時中</div>
+    <div style="display:flex;align-items:flex-end;gap:6px;justify-content:center;">
+      <div class="timer-num" id="cdNum">12</div>
+      <div class="timer-unit" style="margin-bottom:12px;">s</div>
+    </div>
+    <div class="circle-wrap">
+      <button class="circle-btn btn-red" onclick="restartTimer()">
+        <span class="icon">↺</span><span>重新來過</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 3：餘焰計時 ══ -->
+<div class="screen" id="s3">
+  <div class="v-center">
+    <div class="spec-row">
+      <span class="spec-num" id="specNo3">#01</span>
+      <span class="type-badge first" id="badge3">第一次</span>
+    </div>
+    <div class="warn-bar">⚠ 已離火！觀察餘焰，熄滅後按停止</div>
+    <div style="display:flex;align-items:flex-end;gap:6px;justify-content:center;">
+      <div class="timer-num up" id="cuNum">0</div>
+      <div class="timer-unit" style="color:#f59e0b;margin-bottom:12px;">s</div>
+    </div>
+    <div class="circle-wrap">
+      <button class="circle-btn btn-orange" onclick="stopTimer()">
+        <span class="icon">■</span><span>停止計時</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 4：數據紀錄 ══ -->
+<div class="screen" id="s4">
+  <div class="top-bar">
+    <div class="top-meta"><strong id="dataLabel">#01 第一次</strong></div>
+    <button class="link-btn" onclick="goNewBatch()">換批次</button>
+  </div>
+
+  <div class="data-field">
+    <div class="field-top">
+      <span class="field-name">餘焰時間</span>
+      <span class="field-ref" id="afRef">— s</span>
+    </div>
+    <div class="stepper">
+      <button class="step-btn" onclick="adj('af',-1)">−</button>
+      <span class="step-val" id="afVal">0</span>
+      <button class="step-btn" onclick="adj('af',1)">＋</button>
+    </div>
+    <button class="no-flame-btn" id="noFlameBtn" onclick="toggleNoFlame()">無餘焰</button>
+  </div>
+
+  <div class="data-field">
+    <div class="field-top"><span class="field-name">滴焰滴數</span></div>
+    <div class="stepper">
+      <button class="step-btn" onclick="adj('drip',-1)">−</button>
+      <span class="step-val" id="dripVal">0</span>
+      <button class="step-btn" onclick="adj('drip',1)">＋</button>
+    </div>
+    <div class="field-sub" id="dripSub">0.25 × 0 滴 = 0.0 秒</div>
+  </div>
+
+  <div class="data-field">
+    <div class="field-top"><span class="field-name">燃燒長度</span></div>
+    <div class="stepper">
+      <button class="step-btn" onclick="adj('burn',-1)">−</button>
+      <span class="step-val" id="burnVal">5</span>
+      <button class="step-btn" onclick="adj('burn',1)">＋</button>
+    </div>
+    <div class="field-sub">cm</div>
+  </div>
+
+  <div class="divider"></div>
+  <button class="action-btn green" onclick="confirmRecord()">✓ 確定紀錄</button>
+
+  <div class="rec-header">已紀錄 <span id="recCount4">0</span> 筆</div>
+  <div id="recSection4"></div>
+  <div style="height:24px;"></div>
+</div>
+
+</div><!-- #app -->
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════
+   GAS Script (shown to user)
+════════════════════════════════ */
+const GAS_SCRIPT = `function doPost(e) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const NAME = '阻燃測試數據';
+  const HEADERS = ['日期','批號','客戶','規格','顏色','R號',
+    '第一次餘焰(s)','第一次滴焰(s)','第一次燃燒長(cm)',
+    '第二次餘焰(s)','第二次滴焰(s)','第二次燃燒長(cm)','ID'];
+  let sh = ss.getSheetByName(NAME);
+  if (!sh) { sh = ss.insertSheet(NAME); sh.appendRow(HEADERS); }
+
+  const body = JSON.parse(e.postData.contents);
+
+  if (body.action === 'upsert') {
+    const d = body.data;
+    const row = [d.date,d.batchNo,d.client,d.spec,d.color,d.rNum,
+      d.af1,d.drip1,d.burn1, d.af2,d.drip2,d.burn2, String(d.id)];
+    const vals = sh.getDataRange().getValues();
+    let ri = -1;
+    for (let i=1;i<vals.length;i++) if(String(vals[i][12])===String(d.id)){ri=i+1;break;}
+    if (ri>0) sh.getRange(ri,1,1,row.length).setValues([row]);
+    else sh.appendRow(row);
+  } else if (body.action === 'delete') {
+    const vals = sh.getDataRange().getValues();
+    for (let i=vals.length-1;i>=1;i--)
+      if(String(vals[i][12])===String(body.id)){sh.deleteRow(i+1);break;}
+  }
+  return ContentService
+    .createTextOutput(JSON.stringify({ok:true}))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+function doGet(e){
+  return ContentService.createTextOutput('OK');
+}`;
+
+document.getElementById('gasCodeBox').textContent = GAS_SCRIPT;
+
+/* ════════════════════════════════
+   State
+════════════════════════════════ */
+const $ = id => document.getElementById(id);
+
+const S = {
+  specNum: 1,
+  isSecond: false,
+  curSpecId: null,   // specimen ID between first & second test
+  interval: null,
+  beepIv: null,
+  upSec: 0,
+  afRaw: 0, af: 0, drip: 0, burn: 5, noFlame: false,
+  batches: [],
+  curBatch: -1,
+  gasUrl: localStorage.getItem('gasUrl') || 'https://script.google.com/macros/s/AKfycbwXqgtkRSOx_6Z1S4wpKHYIk9e5PoL_kkhCRaD9fY7S-Yr0rw481YAzAakD6DDg21aW/exec'
+};
+
+/* ════════════════════════════════
+   Audio
+════════════════════════════════ */
+let AC = null;
+function ac() { return AC || (AC = new (window.AudioContext || window.webkitAudioContext)()); }
+function beep() {
+  const ctx = ac(), o = ctx.createOscillator(), g = ctx.createGain();
+  o.connect(g); g.connect(ctx.destination);
+  o.frequency.value = 880; o.type = 'square';
+  g.gain.setValueAtTime(.25, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .12);
+  o.start(); o.stop(ctx.currentTime + .12);
+}
+function startBeeps() { beep(); S.beepIv = setInterval(beep, 600); }
+function stopBeeps()  { clearInterval(S.beepIv); S.beepIv = null; }
+
+/* ════════════════════════════════
+   Toast
+════════════════════════════════ */
+let toastTimer = null;
+function showToast(msg, type = '') {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' ' + type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = 'toast'; }, 2500);
+}
+
+/* ════════════════════════════════
+   Screen nav
+════════════════════════════════ */
+const SCREENS = ['s0','s1','s2','s3','s4'];
+function goTo(idx) {
+  SCREENS.forEach((id, i) => { $(id).className = 'screen' + (i === idx ? ' active' : ''); });
+}
+
+/* ════════════════════════════════
+   GAS settings
+════════════════════════════════ */
+function toggleGas() {
+  const body = $('gasBody');
+  body.classList.toggle('hidden');
+}
+
+function saveGasUrl() {
+  const url = $('gasUrlInput').value.trim();
+  S.gasUrl = url;
+  localStorage.setItem('gasUrl', url);
+  updateGasStatus();
+  showToast('網址已儲存', 'ok');
+}
+
+function updateGasStatus() {
+  const ok = !!S.gasUrl;
+  $('gasDot').className = 'gas-dot' + (ok ? ' ok' : '');
+  $('gasStatusTxt').textContent = ok ? '已設定' : '未設定';
+  $('gasStatusTxt').style.color = ok ? '#10b981' : '#6b7280';
+  if (S.gasUrl) $('gasUrlInput').value = S.gasUrl;
+}
+
+/* ════════════════════════════════
+   Batch
+════════════════════════════════ */
+$('testDate').value = new Date().toISOString().slice(0, 10);
+updateGasStatus();
+
+function confirmBatch() {
+  const batchNo = $('batchNo').value.trim() || '（未填）';
+  const client  = $('client').value.trim()  || '（未填）';
+  const spec    = $('spec').value.trim()    || '（未填）';
+  const color   = $('color').value.trim()   || '（未填）';
+  const date    = $('testDate').value       || '（未填）';
+  const startR  = Math.max(1, parseInt($('startR').value) || 1);
+
+  S.batches.push({ id: Date.now(), date, batchNo, client, spec, color, specimens: [], collapsed: false });
+  S.curBatch = S.batches.length - 1;
+  S.specNum = startR; S.isSecond = false; S.curSpecId = null;
+
+  $('topBatchNo').textContent = '批號　' + batchNo;
+  $('topClient').textContent  = '客戶　' + client;
+  updateSpecUI();
+  goTo(1);
+}
+
+function goNewBatch() {
+  clearInterval(S.interval); stopBeeps();
+  if (S.curBatch >= 0) S.batches[S.curBatch].collapsed = true;
+  $('batchNo').value = ''; $('client').value = '';
+  $('spec').value = ''; $('color').value = '';
+  $('startR').value = '1';
+  $('testDate').value = new Date().toISOString().slice(0, 10);
+  goTo(0);
+}
+
+/* ════════════════════════════════
+   Specimen UI
+════════════════════════════════ */
+const pad = n => String(n).padStart(2, '0');
+const specLabel = () => '#' + pad(S.specNum);
+
+function updateSpecUI() {
+  const lbl = specLabel();
+  const txt = S.isSecond ? '第二次' : '第一次';
+  const cls = 'type-badge ' + (S.isSecond ? 'second' : 'first');
+  ['1','2','3'].forEach(i => {
+    $('specNo' + i).textContent = lbl;
+    $('badge'  + i).textContent = txt;
+    $('badge'  + i).className   = cls;
+  });
+  $('dataLabel').textContent = lbl + '　' + txt;
+}
+
+/* ════════════════════════════════
+   Timer
+════════════════════════════════ */
+function startCountdown() {
+  let secs = 12;
+  $('cdNum').textContent = '12';
+  goTo(2);
+  S.interval = setInterval(() => {
+    secs -= .1;
+    if (secs <= 0) {
+      clearInterval(S.interval);
+      $('cdNum').textContent = '0';
+      startCountUp();
+    } else {
+      $('cdNum').textContent = Math.ceil(secs);
+    }
+  }, 100);
+}
+
+function restartTimer() {
+  clearInterval(S.interval);
+  goTo(1);
+}
+
+function startCountUp() {
+  S.upSec = 0;
+  $('cuNum').textContent = '0';
+  goTo(3);
+  startBeeps();
+  S.interval = setInterval(() => {
+    S.upSec += .1;
+    $('cuNum').textContent = Math.floor(S.upSec);
+  }, 100);
+}
+
+function stopTimer() {
+  clearInterval(S.interval); stopBeeps();
+  S.afRaw = Math.round(S.upSec);
+  S.af = S.afRaw; S.drip = 0; S.burn = 5; S.noFlame = false;
+  refreshInput();
+  goTo(4);
+}
+
+/* ════════════════════════════════
+   Input
+════════════════════════════════ */
+function adj(field, delta) {
+  if (field === 'af')   { if (!S.noFlame) S.af   = Math.max(0, S.af   + delta); }
+  if (field === 'drip') { S.drip = Math.max(0, S.drip + delta); }
+  if (field === 'burn') { S.burn = Math.max(0, S.burn + delta); }
+  refreshInput();
+}
+
+function toggleNoFlame() {
+  S.noFlame = !S.noFlame;
+  if (S.noFlame) S.af = 0;
+  refreshInput();
+}
+
+function refreshInput() {
+  $('afRef').textContent   = S.noFlame ? '—' : S.afRaw + ' s';
+  $('afVal').textContent   = S.noFlame ? 0 : S.af;
+  $('dripVal').textContent = S.drip;
+  $('burnVal').textContent = S.burn;
+  $('dripSub').textContent = '0.25 × ' + S.drip + ' 滴 = ' + (S.drip * .25).toFixed(1) + ' 秒';
+  const nb = $('noFlameBtn');
+  if (S.noFlame) { nb.classList.add('on'); nb.textContent = '✓ 無餘焰'; }
+  else           { nb.classList.remove('on'); nb.textContent = '無餘焰'; }
+}
+
+/* ════════════════════════════════
+   Confirm record
+════════════════════════════════ */
+function confirmRecord() {
+  const testData = {
+    af:      S.noFlame ? 0 : S.af,
+    drip:    S.drip,
+    dripSec: (S.drip * .25).toFixed(1),
+    burn:    S.burn
+  };
+
+  const batch = S.batches[S.curBatch];
+
+  if (!S.isSecond) {
+    // 第一次：建立新試片紀錄
+    const specimen = {
+      id:    Date.now(),
+      rNum:  specLabel(),
+      test1: testData,
+      test2: null,
+      uploadStatus: 'pending'
+    };
+    batch.specimens.push(specimen);
+    S.curSpecId = specimen.id;
+    S.isSecond = true;
+    uploadSpecimen(batch, specimen);
+  } else {
+    // 第二次：更新同一試片
+    const specimen = batch.specimens.find(sp => sp.id === S.curSpecId);
+    if (specimen) {
+      specimen.test2 = testData;
+      specimen.uploadStatus = 'pending';
+      uploadSpecimen(batch, specimen);
+    }
+    S.curSpecId = null;
+    S.isSecond = false;
+    S.specNum++;
+  }
+
+  updateSpecUI();
+  renderRecords();
+  goTo(1);
+}
+
+/* ════════════════════════════════
+   Google Sheet sync
+════════════════════════════════ */
+function uploadSpecimen(batch, specimen) {
+  specimen.uploadStatus = 'pending';
+  renderRecords();
+
+  if (!S.gasUrl) return;
+
+  const payload = {
+    action: 'upsert',
+    data: {
+      id:      specimen.id,
+      date:    batch.date,
+      batchNo: batch.batchNo,
+      client:  batch.client,
+      spec:    batch.spec,
+      color:   batch.color,
+      rNum:    specimen.rNum,
+      af1:    specimen.test1 ? specimen.test1.af      : '',
+      drip1:  specimen.test1 ? specimen.test1.dripSec : '',
+      burn1:  specimen.test1 ? specimen.test1.burn    : '',
+      af2:    specimen.test2 ? specimen.test2.af      : '',
+      drip2:  specimen.test2 ? specimen.test2.dripSec : '',
+      burn2:  specimen.test2 ? specimen.test2.burn    : ''
+    }
+  };
+
+  fetch(S.gasUrl, { method: 'POST', body: JSON.stringify(payload), redirect: 'follow' })
+    .then(r => r.json())
+    .then(res => {
+      specimen.uploadStatus = res.ok ? 'ok' : 'err';
+      showToast(res.ok ? '已同步 Google Sheet ✓' : '上傳失敗', res.ok ? 'ok' : 'err');
+      renderRecords();
+    })
+    .catch(() => {
+      specimen.uploadStatus = 'err';
+      showToast('上傳失敗，請檢查網址', 'err');
+      renderRecords();
+    });
+}
+
+function deleteFromSheet(specId) {
+  if (!S.gasUrl) return;
+  fetch(S.gasUrl, {
+    method: 'POST',
+    body: JSON.stringify({ action: 'delete', id: specId }),
+    redirect: 'follow'
+  })
+    .then(() => showToast('Google Sheet 已刪除', 'ok'))
+    .catch(() => showToast('Sheet 刪除失敗', 'err'));
+}
+
+/* ════════════════════════════════
+   Records
+════════════════════════════════ */
+function delSpecimen(bi, specId) {
+  if (!confirm('確定刪除此試片紀錄？')) return;
+  S.batches[bi].specimens = S.batches[bi].specimens.filter(s => s.id !== specId);
+  deleteFromSheet(specId);
+  renderRecords();
+}
+
+function toggleCollapse(bi) {
+  S.batches[bi].collapsed = !S.batches[bi].collapsed;
+  renderRecords();
+}
+
+function renderRecords() {
+  const total = S.batches.reduce((n, b) => n + b.specimens.length, 0);
+  ['recCount0','recCount1','recCount4'].forEach(id => $(id).textContent = total);
+
+  const dotHtml = st => {
+    if (!S.gasUrl) return '';
+    const cls = st === 'ok' ? 'ok' : st === 'err' ? 'err' : 'pending';
+    return `<span class="upload-dot ${cls}" title="${cls === 'ok' ? '已同步' : cls === 'err' ? '上傳失敗' : '上傳中'}"></span>`;
+  };
+
+  const html = S.batches.map((b, bi) => {
+    if (!b.specimens.length) return '';
+
+    const cards = b.collapsed ? '' : b.specimens.map(sp => {
+      const t1 = sp.test1
+        ? `<span class="test-data">餘 <b>${sp.test1.af}s</b>&nbsp; 滴 <b>${sp.test1.dripSec}s</b>&nbsp; 燃 <b>${sp.test1.burn}cm</b></span>`
+        : `<span class="test-pending">待測</span>`;
+      const t2 = sp.test2
+        ? `<span class="test-data">餘 <b>${sp.test2.af}s</b>&nbsp; 滴 <b>${sp.test2.dripSec}s</b>&nbsp; 燃 <b>${sp.test2.burn}cm</b></span>`
+        : `<span class="test-pending">待測</span>`;
+      return `
+        <div class="spec-card">
+          <div class="spec-card-head">
+            <span class="spec-rnum">${sp.rNum}${dotHtml(sp.uploadStatus)}</span>
+            <button class="del-btn" onclick="delSpecimen(${bi},${sp.id})">刪除</button>
+          </div>
+          <div class="test-row">
+            <span class="test-label first">第一次</span>${t1}
+          </div>
+          <div class="test-row">
+            <span class="test-label second">第二次</span>${t2}
+          </div>
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="batch-group">
+        <div class="batch-hdr ${b.collapsed ? 'collapsed' : ''}" onclick="toggleCollapse(${bi})">
+          <div class="batch-hdr-meta">
+            <h3>${b.batchNo}　${b.client}</h3>
+            <p>${b.date}　${b.spec}　${b.color}　${b.specimens.length} 片</p>
+          </div>
+          <span class="chevron">▼</span>
+        </div>
+        ${b.collapsed ? '' : cards}
+      </div>`;
+  }).join('');
+
+  ['recSection0','recSection1','recSection4'].forEach(id => $(id).innerHTML = html);
+}
+
+/* ════════════════════════════════
+   Init
+════════════════════════════════ */
+updateSpecUI();
+</script>
+</body>
+</html>
