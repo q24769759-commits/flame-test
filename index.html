@@ -350,14 +350,31 @@ const S = {
    Audio
 ════════════════════════════════ */
 let AC = null;
-function ac() { return AC || (AC = new (window.AudioContext || window.webkitAudioContext)()); }
+function ac() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  return AC;
+}
+
+function unlockAudio() {
+  const ctx = ac();
+  if (ctx.state === 'suspended') ctx.resume();
+  // 播一個無聲音節解鎖 iOS
+  const buf = ctx.createBuffer(1, 1, ctx.sampleRate);
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  src.connect(ctx.destination);
+  src.start(0);
+}
+
 function beep() {
-  const ctx = ac(), o = ctx.createOscillator(), g = ctx.createGain();
+  const ctx = ac();
+  if (ctx.state === 'suspended') ctx.resume();
+  const o = ctx.createOscillator(), g = ctx.createGain();
   o.connect(g); g.connect(ctx.destination);
-  o.frequency.value = 880; o.type = 'square';
-  g.gain.setValueAtTime(.25, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .12);
-  o.start(); o.stop(ctx.currentTime + .12);
+  o.frequency.value = 880; o.type = 'sine';
+  g.gain.setValueAtTime(.3, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .15);
+  o.start(); o.stop(ctx.currentTime + .15);
 }
 function startBeeps() { beep(); S.beepIv = setInterval(beep, 600); }
 function stopBeeps()  { clearInterval(S.beepIv); S.beepIv = null; }
@@ -438,6 +455,7 @@ function updateSpecUI() {
    Timer
 ════════════════════════════════ */
 function startCountdown() {
+  unlockAudio();
   let secs = 12;
   $('cdNum').textContent = '12';
   goTo(2);
