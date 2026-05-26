@@ -160,6 +160,18 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; appe
 .test-data b { color: #e5e7eb; font-weight: 600; }
 .test-pending { font-size: 12px; color: #4b5563; font-style: italic; }
 
+/* ── Judge ── */
+.judge-box {
+  border-radius: 10px; padding: 12px; text-align: center;
+  font-size: 18px; font-weight: 800; margin-bottom: 10px; flex-shrink: 0;
+}
+.judge-box.pass { background: #064e3b; color: #6ee7b7; border: 1px solid #10b981; }
+.judge-box.fail { background: #7f1d1d; color: #fca5a5; border: 1px solid #ef4444; }
+.judge-box.pending { background: #1f2937; color: #4b5563; border: 1px solid #374151; }
+.jbadge { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
+.jbadge.pass { background: #064e3b; color: #6ee7b7; }
+.jbadge.fail { background: #7f1d1d; color: #fca5a5; }
+
 /* ── Upload indicator ── */
 .upload-dot {
   width: 7px; height: 7px; border-radius: 50%;
@@ -301,6 +313,7 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; appe
     <div class="field-sub">cm</div>
   </div>
 
+  <div class="judge-box pending" id="judgeBox">判定：—</div>
   <div class="divider"></div>
   <button class="action-btn green" onclick="confirmRecord()">✓ 確定紀錄</button>
 
@@ -464,6 +477,16 @@ function stopTimer() {
 }
 
 /* ════════════════════════════════
+   Judgment
+════════════════════════════════ */
+const CRITERIA = { af: 7, dripSec: 4, burn: 20 };
+
+function judgeTest(af, dripSec, burn) {
+  return (af <= CRITERIA.af && parseFloat(dripSec) <= CRITERIA.dripSec && burn <= CRITERIA.burn)
+    ? 'PASS' : 'FAIL';
+}
+
+/* ════════════════════════════════
    Input
 ════════════════════════════════ */
 function adj(field, delta) {
@@ -485,6 +508,14 @@ function refreshInput() {
   $('dripVal').textContent = S.drip;
   $('burnVal').textContent = S.burn;
   $('dripSub').textContent = '0.25 × ' + S.drip + ' 滴 = ' + (S.drip * .25).toFixed(1) + ' 秒';
+
+  const curAf     = S.noFlame ? 0 : S.af;
+  const curDrip   = (S.drip * .25).toFixed(1);
+  const judge     = judgeTest(curAf, curDrip, S.burn);
+  const jb        = $('judgeBox');
+  jb.textContent  = '判定：' + judge;
+  jb.className    = 'judge-box ' + judge.toLowerCase();
+
   const nb = $('noFlameBtn');
   if (S.noFlame) { nb.classList.add('on'); nb.textContent = '✓ 無餘焰'; }
   else           { nb.classList.remove('on'); nb.textContent = '無餘焰'; }
@@ -494,11 +525,11 @@ function refreshInput() {
    Confirm record
 ════════════════════════════════ */
 function confirmRecord() {
+  const af      = S.noFlame ? 0 : S.af;
+  const dripSec = (S.drip * .25).toFixed(1);
   const testData = {
-    af:      S.noFlame ? 0 : S.af,
-    drip:    S.drip,
-    dripSec: (S.drip * .25).toFixed(1),
-    burn:    S.burn
+    af, drip: S.drip, dripSec, burn: S.burn,
+    judge: judgeTest(af, dripSec, S.burn)
   };
 
   const batch = S.batches[S.curBatch];
@@ -558,7 +589,9 @@ function uploadSpecimen(batch, specimen) {
       burn1:  specimen.test1 ? specimen.test1.burn    : '',
       af2:    specimen.test2 ? specimen.test2.af      : '',
       drip2:  specimen.test2 ? specimen.test2.dripSec : '',
-      burn2:  specimen.test2 ? specimen.test2.burn    : ''
+      burn2:   specimen.test2 ? specimen.test2.burn    : '',
+      judge1:  specimen.test1 ? specimen.test1.judge  : '',
+      judge2:  specimen.test2 ? specimen.test2.judge  : ''
     }
   };
 
@@ -616,11 +649,12 @@ function renderRecords() {
     if (!b.specimens.length) return '';
 
     const cards = b.collapsed ? '' : b.specimens.map(sp => {
+      const jBadge = j => j ? `<span class="jbadge ${j.toLowerCase()}">${j}</span>` : '';
       const t1 = sp.test1
-        ? `<span class="test-data">餘 <b>${sp.test1.af}s</b>&nbsp; 滴 <b>${sp.test1.dripSec}s</b>&nbsp; 燃 <b>${sp.test1.burn}cm</b></span>`
+        ? `<span class="test-data">餘 <b>${sp.test1.af}s</b>&nbsp; 滴 <b>${sp.test1.dripSec}s</b>&nbsp; 燃 <b>${sp.test1.burn}cm</b></span>${jBadge(sp.test1.judge)}`
         : `<span class="test-pending">待測</span>`;
       const t2 = sp.test2
-        ? `<span class="test-data">餘 <b>${sp.test2.af}s</b>&nbsp; 滴 <b>${sp.test2.dripSec}s</b>&nbsp; 燃 <b>${sp.test2.burn}cm</b></span>`
+        ? `<span class="test-data">餘 <b>${sp.test2.af}s</b>&nbsp; 滴 <b>${sp.test2.dripSec}s</b>&nbsp; 燃 <b>${sp.test2.burn}cm</b></span>${jBadge(sp.test2.judge)}`
         : `<span class="test-pending">待測</span>`;
       return `
         <div class="spec-card">
