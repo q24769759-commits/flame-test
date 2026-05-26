@@ -402,6 +402,7 @@ function confirmBatch() {
   $('topBatchNo').textContent = '批號　' + batchNo;
   $('topClient').textContent  = '客戶　' + client;
   updateSpecUI();
+  saveState();
   goTo(1);
 }
 
@@ -562,6 +563,7 @@ function confirmRecord() {
 
   updateSpecUI();
   renderRecords();
+  saveState();
   goTo(1);
 }
 
@@ -628,6 +630,7 @@ function delSpecimen(bi, specId) {
   S.batches[bi].specimens = S.batches[bi].specimens.filter(s => s.id !== specId);
   deleteFromSheet(specId);
   renderRecords();
+  saveState();
 }
 
 function toggleCollapse(bi) {
@@ -688,9 +691,61 @@ function renderRecords() {
 }
 
 /* ════════════════════════════════
+   本機儲存 & 自動補傳
+════════════════════════════════ */
+function saveState() {
+  localStorage.setItem('ft_batches', JSON.stringify(S.batches));
+  localStorage.setItem('ft_meta', JSON.stringify({
+    curBatch: S.curBatch,
+    specNum:  S.specNum,
+    isSecond: S.isSecond,
+    curSpecId: S.curSpecId
+  }));
+}
+
+function loadState() {
+  const raw = localStorage.getItem('ft_batches');
+  const meta = localStorage.getItem('ft_meta');
+  if (!raw) return;
+
+  S.batches = JSON.parse(raw);
+  if (meta) {
+    const m = JSON.parse(meta);
+    S.curBatch  = m.curBatch;
+    S.specNum   = m.specNum  ?? 1;
+    S.isSecond  = m.isSecond ?? false;
+    S.curSpecId = m.curSpecId ?? null;
+  }
+
+  if (S.curBatch >= 0 && S.batches[S.curBatch]) {
+    const b = S.batches[S.curBatch];
+    $('topBatchNo').textContent = '批號　' + b.batchNo;
+    $('topClient').textContent  = '客戶　' + b.client;
+    updateSpecUI();
+    renderRecords();
+    goTo(1);
+  } else {
+    renderRecords();
+  }
+}
+
+function retryPending() {
+  let count = 0;
+  S.batches.forEach(b => {
+    b.specimens.forEach(sp => {
+      if (sp.uploadStatus !== 'ok') { uploadSpecimen(b, sp); count++; }
+    });
+  });
+  if (count > 0) showToast('網路恢復，補傳 ' + count + ' 筆資料…');
+}
+
+window.addEventListener('online', retryPending);
+
+/* ════════════════════════════════
    Init
 ════════════════════════════════ */
 updateSpecUI();
+loadState();
 </script>
 </body>
 </html>
