@@ -54,31 +54,6 @@ input[type="date"] { color-scheme: dark; }
 input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; appearance: none; }
 
-/* ── GAS Settings ── */
-.gas-section { background: #1f2937; border-radius: 12px; margin-bottom: 16px; overflow: hidden; flex-shrink: 0; }
-.gas-toggle {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 13px 16px; cursor: pointer; user-select: none;
-}
-.gas-toggle-left { font-size: 13px; font-weight: 600; color: #d1d5db; }
-.gas-dot { width: 8px; height: 8px; border-radius: 50%; background: #6b7280; flex-shrink: 0; }
-.gas-dot.ok { background: #10b981; }
-.gas-body { padding: 0 16px 16px; border-top: 1px solid #374151; }
-.gas-step { font-size: 12px; color: #6b7280; margin: 10px 0 6px; line-height: 1.6; }
-.gas-code {
-  background: #0f172a; border-radius: 8px; padding: 10px; font-size: 11px;
-  color: #86efac; font-family: monospace; white-space: pre; overflow-x: auto;
-  margin-bottom: 10px; max-height: 120px;
-}
-.gas-input-row { display: flex; gap: 8px; margin-top: 10px; }
-.gas-input-row input {
-  flex: 1; background: #374151; border: 1px solid #4b5563; border-radius: 8px;
-  color: #f3f4f6; font-size: 13px; padding: 9px 12px; outline: none;
-}
-.gas-save-btn {
-  background: #2563eb; border: none; border-radius: 8px;
-  color: #fff; font-size: 13px; font-weight: 600; padding: 9px 14px; cursor: pointer; flex-shrink: 0;
-}
 
 /* ── Specimen badge ── */
 .spec-row { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 8px; flex-shrink: 0; }
@@ -215,25 +190,6 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; appe
   </div>
   <button class="action-btn" style="margin-bottom:16px;" onclick="confirmBatch()">確定，開始測試</button>
 
-  <!-- GAS 設定 -->
-  <div class="gas-section">
-    <div class="gas-toggle" onclick="toggleGas()">
-      <span class="gas-toggle-left">⚙ Google Sheet 設定</span>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span id="gasStatusTxt" style="font-size:12px;color:#6b7280;">未設定</span>
-        <div class="gas-dot" id="gasDot"></div>
-      </div>
-    </div>
-    <div class="gas-body hidden" id="gasBody">
-      <div class="gas-step">① 開啟目標 Google Sheet → 擴充功能 → Apps Script<br>② 貼上以下程式碼 → 儲存<br>③ 部署 → 新增部署 → 類型選「網路應用程式」<br>　　執行身分：我、存取權：任何人 → 部署 → 複製網址<br>④ 將網址貼到下方欄位儲存</div>
-      <div class="gas-code" id="gasCodeBox"></div>
-      <div class="gas-input-row">
-        <input type="url" id="gasUrlInput" placeholder="貼上 Apps Script 部署網址">
-        <button class="gas-save-btn" onclick="saveGasUrl()">儲存</button>
-      </div>
-    </div>
-  </div>
-
   <div class="rec-header">已紀錄 <span id="recCount0">0</span> 筆</div>
   <div id="recSection0"></div>
   <div style="height:24px;"></div>
@@ -360,44 +316,6 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; appe
 
 <script>
 /* ════════════════════════════════
-   GAS Script (shown to user)
-════════════════════════════════ */
-const GAS_SCRIPT = `function doPost(e) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const NAME = '阻燃測試數據';
-  const HEADERS = ['日期','批號','客戶','規格','顏色','R號',
-    '第一次餘焰(s)','第一次滴焰(s)','第一次燃燒長(cm)',
-    '第二次餘焰(s)','第二次滴焰(s)','第二次燃燒長(cm)','ID'];
-  let sh = ss.getSheetByName(NAME);
-  if (!sh) { sh = ss.insertSheet(NAME); sh.appendRow(HEADERS); }
-
-  const body = JSON.parse(e.postData.contents);
-
-  if (body.action === 'upsert') {
-    const d = body.data;
-    const row = [d.date,d.batchNo,d.client,d.spec,d.color,d.rNum,
-      d.af1,d.drip1,d.burn1, d.af2,d.drip2,d.burn2, String(d.id)];
-    const vals = sh.getDataRange().getValues();
-    let ri = -1;
-    for (let i=1;i<vals.length;i++) if(String(vals[i][12])===String(d.id)){ri=i+1;break;}
-    if (ri>0) sh.getRange(ri,1,1,row.length).setValues([row]);
-    else sh.appendRow(row);
-  } else if (body.action === 'delete') {
-    const vals = sh.getDataRange().getValues();
-    for (let i=vals.length-1;i>=1;i--)
-      if(String(vals[i][12])===String(body.id)){sh.deleteRow(i+1);break;}
-  }
-  return ContentService
-    .createTextOutput(JSON.stringify({ok:true}))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-function doGet(e){
-  return ContentService.createTextOutput('OK');
-}`;
-
-document.getElementById('gasCodeBox').textContent = GAS_SCRIPT;
-
-/* ════════════════════════════════
    State
 ════════════════════════════════ */
 const $ = id => document.getElementById(id);
@@ -452,34 +370,9 @@ function goTo(idx) {
 }
 
 /* ════════════════════════════════
-   GAS settings
-════════════════════════════════ */
-function toggleGas() {
-  const body = $('gasBody');
-  body.classList.toggle('hidden');
-}
-
-function saveGasUrl() {
-  const url = $('gasUrlInput').value.trim();
-  S.gasUrl = url;
-  localStorage.setItem('gasUrl', url);
-  updateGasStatus();
-  showToast('網址已儲存', 'ok');
-}
-
-function updateGasStatus() {
-  const ok = !!S.gasUrl;
-  $('gasDot').className = 'gas-dot' + (ok ? ' ok' : '');
-  $('gasStatusTxt').textContent = ok ? '已設定' : '未設定';
-  $('gasStatusTxt').style.color = ok ? '#10b981' : '#6b7280';
-  if (S.gasUrl) $('gasUrlInput').value = S.gasUrl;
-}
-
-/* ════════════════════════════════
    Batch
 ════════════════════════════════ */
 $('testDate').value = new Date().toISOString().slice(0, 10);
-updateGasStatus();
 
 function confirmBatch() {
   const batchNo = $('batchNo').value.trim() || '（未填）';
