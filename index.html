@@ -371,12 +371,12 @@ function beep() {
   if (ctx.state === 'suspended') ctx.resume();
   const o = ctx.createOscillator(), g = ctx.createGain();
   o.connect(g); g.connect(ctx.destination);
-  o.frequency.value = 880; o.type = 'sine';
-  g.gain.setValueAtTime(.3, ctx.currentTime);
-  g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .15);
-  o.start(); o.stop(ctx.currentTime + .15);
+  o.frequency.value = 1050; o.type = 'sine';
+  g.gain.setValueAtTime(.35, ctx.currentTime);
+  g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + .07);
+  o.start(); o.stop(ctx.currentTime + .07);
 }
-function startBeeps() { beep(); S.beepIv = setInterval(beep, 600); }
+function startBeeps() { beep(); S.beepIv = setInterval(beep, 250); }
 function stopBeeps()  { clearInterval(S.beepIv); S.beepIv = null; }
 
 /* ════════════════════════════════
