@@ -651,10 +651,10 @@ function renderRecords() {
     const cards = b.collapsed ? '' : b.specimens.map(sp => {
       const jBadge = j => j ? `<span class="jbadge ${j.toLowerCase()}">${j}</span>` : '';
       const t1 = sp.test1
-        ? `<span class="test-data">餘 <b>${sp.test1.af}s</b>&nbsp; 滴 <b>${sp.test1.dripSec}s</b>&nbsp; 燃 <b>${sp.test1.burn}cm</b></span>${jBadge(sp.test1.judge)}`
+        ? `<span class="test-data">餘 <b>${sp.test1.af}s</b>&nbsp; 滴 <b>${sp.test1.dripSec}s</b>&nbsp; 長 <b>${sp.test1.burn}cm</b></span>${jBadge(sp.test1.judge)}`
         : `<span class="test-pending">待測</span>`;
       const t2 = sp.test2
-        ? `<span class="test-data">餘 <b>${sp.test2.af}s</b>&nbsp; 滴 <b>${sp.test2.dripSec}s</b>&nbsp; 燃 <b>${sp.test2.burn}cm</b></span>${jBadge(sp.test2.judge)}`
+        ? `<span class="test-data">餘 <b>${sp.test2.af}s</b>&nbsp; 滴 <b>${sp.test2.dripSec}s</b>&nbsp; 長 <b>${sp.test2.burn}cm</b></span>${jBadge(sp.test2.judge)}`
         : `<span class="test-pending">待測</span>`;
       return `
         <div class="spec-card">
