@@ -20,6 +20,7 @@ body { color: #e5e7eb; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI
 .screen.active { display: flex; }
 
 /* ── Common ── */
+button, input, select { touch-action: manipulation; }
 .page-title { font-size: 24px; font-weight: 800; color: #f9fafb; text-align: center; margin-bottom: 28px; }
 
 .action-btn {
@@ -743,25 +744,24 @@ function loadState() {
   const meta = localStorage.getItem('ft_meta');
   if (!raw) return;
 
-  S.batches = JSON.parse(raw);
+  const allBatches = JSON.parse(raw);
+  // 重新開啟時移除所有片都已完整上傳（兩次測試完成且 ok）的批次
+  S.batches = allBatches.filter(b =>
+    b.specimens.some(sp => sp.uploadStatus !== 'ok' || sp.test2 === null)
+  );
+
   if (meta) {
     const m = JSON.parse(meta);
-    S.curBatch  = m.curBatch;
+    // curBatch 需對應過濾後的陣列，若原批次已被移除則重置
+    const origBatch = allBatches[m.curBatch];
+    S.curBatch  = origBatch ? S.batches.findIndex(b => b.id === origBatch.id) : -1;
     S.specNum   = m.specNum  ?? 1;
     S.isSecond  = m.isSecond ?? false;
     S.curSpecId = m.curSpecId ?? null;
   }
 
-  if (S.curBatch >= 0 && S.batches[S.curBatch]) {
-    const b = S.batches[S.curBatch];
-    $('topBatchNo').textContent = '批號　' + b.batchNo;
-    $('topClient').textContent  = '客戶　' + b.client;
-    updateSpecUI();
-    renderRecords();
-    goTo(1);
-  } else {
-    renderRecords();
-  }
+  saveState();
+  renderRecords();
 }
 
 function retryPending() {
