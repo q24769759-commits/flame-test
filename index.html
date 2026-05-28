@@ -665,7 +665,6 @@ function deleteFromSheet(specId) {
    Records
 ════════════════════════════════ */
 function delSpecimen(bi, specId) {
-  if (!confirm('確定刪除此試片紀錄？')) return;
   S.batches[bi].specimens = S.batches[bi].specimens.filter(s => s.id !== specId);
   deleteFromSheet(specId);
   renderRecords();
