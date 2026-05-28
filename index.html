@@ -391,7 +391,10 @@ function beep() {
   ctx.resume();
   const s = ctx.createBufferSource();
   s.buffer = beepBuf;
-  s.connect(ctx.destination);
+  const g = ctx.createGain();
+  g.gain.value = 3.0;
+  s.connect(g);
+  g.connect(ctx.destination);
   s.start(0);
 }
 function startBeeps() { beep(); S.beepIv = setInterval(beep, 150); }
