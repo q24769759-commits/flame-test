@@ -153,6 +153,22 @@ input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; appe
 }
 .del-btn:active { background: #991b1b; }
 
+/* ── Delete confirm modal ── */
+.del-modal {
+  position: fixed; inset: 0; background: #000a; z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+}
+.del-modal.hidden { display: none; }
+.del-modal-box {
+  background: #1f2937; border: 1px solid #374151; border-radius: 16px;
+  padding: 28px 24px; width: 280px; text-align: center;
+}
+.del-modal-box p { font-size: 16px; color: #f9fafb; margin-bottom: 24px; font-weight: 600; }
+.del-modal-btns { display: flex; gap: 12px; }
+.del-modal-btns button { flex: 1; padding: 14px; border: none; border-radius: 10px; font-size: 15px; font-weight: 700; cursor: pointer; }
+.del-confirm { background: #dc2626; color: #fff; }
+.del-cancel  { background: #374151; color: #e5e7eb; }
+
 .test-row { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
 .test-label { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 10px; flex-shrink: 0; }
 .test-label.first  { background: #1e3a8a; color: #93c5fd; }
@@ -360,7 +376,7 @@ function getAC() {
 
 function buildBuf(ctx) {
   if (beepBuf) return;
-  const rate = ctx.sampleRate, dur = 0.06, freq = 1050;
+  const rate = ctx.sampleRate, dur = 0.04, freq = 1800;
   const n = Math.floor(rate * dur);
   const ab = ctx.createBuffer(1, n, rate);
   const d = ab.getChannelData(0);
@@ -397,7 +413,7 @@ function beep() {
   g.connect(ctx.destination);
   s.start(0);
 }
-function startBeeps() { beep(); S.beepIv = setInterval(beep, 150); }
+function startBeeps() { beep(); S.beepIv = setInterval(beep, 120); }
 function stopBeeps()  { clearInterval(S.beepIv); S.beepIv = null; }
 
 /* ════════════════════════════════
@@ -701,7 +717,7 @@ function renderRecords() {
         <div class="spec-card">
           <div class="spec-card-head">
             <span class="spec-rnum">${sp.rNum}${dotHtml(sp.uploadStatus)}</span>
-            <button class="del-btn" onclick="delSpecimen(${bi},${sp.id})">刪除</button>
+            <button class="del-btn" onclick="askDelete(${bi},${sp.id})">刪除</button>
           </div>
           <div class="test-row">
             <span class="test-label first">第一次</span>${t1}
@@ -783,6 +799,33 @@ window.addEventListener('online', retryPending);
 ════════════════════════════════ */
 updateSpecUI();
 loadState();
+
+let _delPending = null;
+function askDelete(bi, specId) {
+  _delPending = { bi, specId };
+  document.getElementById('delModal').classList.remove('hidden');
+}
+function confirmDelModal() {
+  if (!_delPending) return;
+  const { bi, specId } = _delPending;
+  _delPending = null;
+  document.getElementById('delModal').classList.add('hidden');
+  delSpecimen(bi, specId);
+}
+function cancelDelModal() {
+  _delPending = null;
+  document.getElementById('delModal').classList.add('hidden');
+}
 </script>
+
+<div id="delModal" class="del-modal hidden">
+  <div class="del-modal-box">
+    <p>確定刪除此試片紀錄？</p>
+    <div class="del-modal-btns">
+      <button class="del-cancel" onclick="cancelDelModal()">取消</button>
+      <button class="del-confirm" onclick="confirmDelModal()">刪除</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
