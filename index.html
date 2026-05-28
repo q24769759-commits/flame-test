@@ -360,12 +360,12 @@ function getAC() {
 
 function buildBuf(ctx) {
   if (beepBuf) return;
-  const rate = ctx.sampleRate, dur = 0.08, freq = 1050;
+  const rate = ctx.sampleRate, dur = 0.06, freq = 1050;
   const n = Math.floor(rate * dur);
   const ab = ctx.createBuffer(1, n, rate);
   const d = ab.getChannelData(0);
   for (let i = 0; i < n; i++) {
-    d[i] = Math.sin(2 * Math.PI * freq * i / rate) * (1 - i / n) * 0.6;
+    d[i] = Math.sin(2 * Math.PI * freq * i / rate) * (1 - i / n) * 1.0;
   }
   beepBuf = ab;
 }
@@ -394,7 +394,7 @@ function beep() {
   s.connect(ctx.destination);
   s.start(0);
 }
-function startBeeps() { beep(); S.beepIv = setInterval(beep, 250); }
+function startBeeps() { beep(); S.beepIv = setInterval(beep, 150); }
 function stopBeeps()  { clearInterval(S.beepIv); S.beepIv = null; }
 
 /* ════════════════════════════════
@@ -516,7 +516,7 @@ function stopTimer() {
 /* ════════════════════════════════
    Judgment
 ════════════════════════════════ */
-const CRITERIA = { af: 7, dripSec: 4, burn: 20 };
+const CRITERIA = { af: 10, dripSec: 4, burn: 20 };
 
 function judgeTest(af, dripSec, burn) {
   return (af <= CRITERIA.af && parseFloat(dripSec) <= CRITERIA.dripSec && burn <= CRITERIA.burn)
