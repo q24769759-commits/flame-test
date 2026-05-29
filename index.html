@@ -367,37 +367,35 @@ const S = {
    Audio（iOS 相容版）
 ════════════════════════════════ */
 let AC = null;
-let sirenBuf = null;
+let hiBuf = null;
+let loBuf = null;
 
 function getAC() {
   if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
   return AC;
 }
 
-function buildSiren(ctx) {
-  if (sirenBuf) return;
+function buildTones(ctx) {
+  if (hiBuf) return;
   const rate = ctx.sampleRate;
-  const dur = 0.55;
-  const n = Math.floor(rate * dur);
-  const ab = ctx.createBuffer(1, n, rate);
-  const d = ab.getChannelData(0);
-  let phase = 0;
-  for (let i = 0; i < n; i++) {
-    const t = i / rate;
-    // 頻率從 800Hz 升到 1600Hz（掃頻）
-    const freq = 800 + 1454 * (t / dur);
-    phase += 2 * Math.PI * freq / rate;
-    // 尾端略淡出
-    const env = i < n * 0.85 ? 1 : (1 - (i - n * 0.85) / (n * 0.15));
-    d[i] = Math.sin(phase) * env;
-  }
-  sirenBuf = ab;
+  const makeTone = (freq, dur) => {
+    const n = Math.floor(rate * dur);
+    const ab = ctx.createBuffer(1, n, rate);
+    const d = ab.getChannelData(0);
+    for (let i = 0; i < n; i++) {
+      const env = i < n * 0.9 ? 1 : (1 - (i - n * 0.9) / (n * 0.1));
+      d[i] = Math.sin(2 * Math.PI * freq * i / rate) * env;
+    }
+    return ab;
+  };
+  hiBuf = makeTone(1600, 0.4);
+  loBuf = makeTone(500,  0.4);
 }
 
 function unlockAudio() {
   const ctx = getAC();
   ctx.resume();
-  buildSiren(ctx);
+  buildTones(ctx);
   const s = ctx.createBufferSource();
   s.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
   s.connect(ctx.destination);
@@ -407,12 +405,12 @@ function unlockAudio() {
 document.addEventListener('touchstart', unlockAudio, { once: true });
 document.addEventListener('click',      unlockAudio, { once: true });
 
-function playSiren(when) {
+function playTone(buf, when) {
   const ctx = getAC();
   const s = ctx.createBufferSource();
-  s.buffer = sirenBuf;
+  s.buffer = buf;
   const g = ctx.createGain();
-  g.gain.value = 3.5;
+  g.gain.value = 10.0;
   s.connect(g);
   g.connect(ctx.destination);
   s.start(when);
@@ -420,14 +418,14 @@ function playSiren(when) {
 
 function schedulePattern() {
   const ctx = getAC();
-  buildSiren(ctx);
+  buildTones(ctx);
   ctx.resume();
   const t = ctx.currentTime;
-  playSiren(t);
-  playSiren(t + 0.6);
+  playTone(hiBuf, t);
+  playTone(loBuf, t + 0.4);
 }
 
-function startBeeps() { schedulePattern(); S.beepIv = setInterval(schedulePattern, 1200); }
+function startBeeps() { schedulePattern(); S.beepIv = setInterval(schedulePattern, 800); }
 function stopBeeps()  { clearInterval(S.beepIv); S.beepIv = null; }
 
 /* ════════════════════════════════
