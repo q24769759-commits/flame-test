@@ -367,33 +367,37 @@ const S = {
    Audio（iOS 相容版）
 ════════════════════════════════ */
 let AC = null;
-let shortBuf = null;
-let longBuf  = null;
+let sirenBuf = null;
 
 function getAC() {
   if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
   return AC;
 }
 
-function buildBufs(ctx) {
-  if (shortBuf) return;
-  const rate = ctx.sampleRate, freq = 1800;
-  const makeBuf = dur => {
-    const n = Math.floor(rate * dur);
-    const ab = ctx.createBuffer(1, n, rate);
-    const d = ab.getChannelData(0);
-    for (let i = 0; i < n; i++)
-      d[i] = Math.sin(2 * Math.PI * freq * i / rate) * (1 - i / n);
-    return ab;
-  };
-  shortBuf = makeBuf(0.07);
-  longBuf  = makeBuf(0.38);
+function buildSiren(ctx) {
+  if (sirenBuf) return;
+  const rate = ctx.sampleRate;
+  const dur = 0.55;
+  const n = Math.floor(rate * dur);
+  const ab = ctx.createBuffer(1, n, rate);
+  const d = ab.getChannelData(0);
+  let phase = 0;
+  for (let i = 0; i < n; i++) {
+    const t = i / rate;
+    // 頻率從 800Hz 升到 1600Hz（掃頻）
+    const freq = 800 + 1454 * (t / dur);
+    phase += 2 * Math.PI * freq / rate;
+    // 尾端略淡出
+    const env = i < n * 0.85 ? 1 : (1 - (i - n * 0.85) / (n * 0.15));
+    d[i] = Math.sin(phase) * env;
+  }
+  sirenBuf = ab;
 }
 
 function unlockAudio() {
   const ctx = getAC();
   ctx.resume();
-  buildBufs(ctx);
+  buildSiren(ctx);
   const s = ctx.createBufferSource();
   s.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
   s.connect(ctx.destination);
@@ -403,9 +407,10 @@ function unlockAudio() {
 document.addEventListener('touchstart', unlockAudio, { once: true });
 document.addEventListener('click',      unlockAudio, { once: true });
 
-function playAt(ctx, buf, when) {
+function playSiren(when) {
+  const ctx = getAC();
   const s = ctx.createBufferSource();
-  s.buffer = buf;
+  s.buffer = sirenBuf;
   const g = ctx.createGain();
   g.gain.value = 3.5;
   s.connect(g);
@@ -415,13 +420,11 @@ function playAt(ctx, buf, when) {
 
 function schedulePattern() {
   const ctx = getAC();
-  buildBufs(ctx);
+  buildSiren(ctx);
   ctx.resume();
   const t = ctx.currentTime;
-  playAt(ctx, shortBuf, t);
-  playAt(ctx, shortBuf, t + 0.14);
-  playAt(ctx, shortBuf, t + 0.28);
-  playAt(ctx, longBuf,  t + 0.50);
+  playSiren(t);
+  playSiren(t + 0.6);
 }
 
 function startBeeps() { schedulePattern(); S.beepIv = setInterval(schedulePattern, 1200); }
