@@ -367,53 +367,64 @@ const S = {
    Audio（iOS 相容版）
 ════════════════════════════════ */
 let AC = null;
-let beepBuf = null;
+let shortBuf = null;
+let longBuf  = null;
 
 function getAC() {
   if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
   return AC;
 }
 
-function buildBuf(ctx) {
-  if (beepBuf) return;
-  const rate = ctx.sampleRate, dur = 0.04, freq = 1800;
-  const n = Math.floor(rate * dur);
-  const ab = ctx.createBuffer(1, n, rate);
-  const d = ab.getChannelData(0);
-  for (let i = 0; i < n; i++) {
-    d[i] = Math.sin(2 * Math.PI * freq * i / rate) * (1 - i / n) * 1.0;
-  }
-  beepBuf = ab;
+function buildBufs(ctx) {
+  if (shortBuf) return;
+  const rate = ctx.sampleRate, freq = 1800;
+  const makeBuf = dur => {
+    const n = Math.floor(rate * dur);
+    const ab = ctx.createBuffer(1, n, rate);
+    const d = ab.getChannelData(0);
+    for (let i = 0; i < n; i++)
+      d[i] = Math.sin(2 * Math.PI * freq * i / rate) * (1 - i / n);
+    return ab;
+  };
+  shortBuf = makeBuf(0.07);
+  longBuf  = makeBuf(0.38);
 }
 
 function unlockAudio() {
   const ctx = getAC();
   ctx.resume();
-  buildBuf(ctx);
-  // 播一個無聲 buffer 解鎖 iOS
+  buildBufs(ctx);
   const s = ctx.createBufferSource();
   s.buffer = ctx.createBuffer(1, 1, ctx.sampleRate);
   s.connect(ctx.destination);
   s.start(0);
 }
 
-// 第一次觸碰或點擊任何地方立即解鎖
 document.addEventListener('touchstart', unlockAudio, { once: true });
 document.addEventListener('click',      unlockAudio, { once: true });
 
-function beep() {
-  const ctx = getAC();
-  if (!beepBuf) buildBuf(ctx);
-  ctx.resume();
+function playAt(ctx, buf, when) {
   const s = ctx.createBufferSource();
-  s.buffer = beepBuf;
+  s.buffer = buf;
   const g = ctx.createGain();
-  g.gain.value = 3.0;
+  g.gain.value = 3.5;
   s.connect(g);
   g.connect(ctx.destination);
-  s.start(0);
+  s.start(when);
 }
-function startBeeps() { beep(); S.beepIv = setInterval(beep, 120); }
+
+function schedulePattern() {
+  const ctx = getAC();
+  buildBufs(ctx);
+  ctx.resume();
+  const t = ctx.currentTime;
+  playAt(ctx, shortBuf, t);
+  playAt(ctx, shortBuf, t + 0.14);
+  playAt(ctx, shortBuf, t + 0.28);
+  playAt(ctx, longBuf,  t + 0.50);
+}
+
+function startBeeps() { schedulePattern(); S.beepIv = setInterval(schedulePattern, 1200); }
 function stopBeeps()  { clearInterval(S.beepIv); S.beepIv = null; }
 
 /* ════════════════════════════════
