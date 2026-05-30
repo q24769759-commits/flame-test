@@ -368,7 +368,6 @@ const S = {
 ════════════════════════════════ */
 let AC = null;
 let hiBuf = null;
-let loBuf = null;
 
 function getAC() {
   if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
@@ -378,18 +377,14 @@ function getAC() {
 function buildTones(ctx) {
   if (hiBuf) return;
   const rate = ctx.sampleRate;
-  const makeTone = (freq, dur) => {
-    const n = Math.floor(rate * dur);
-    const ab = ctx.createBuffer(1, n, rate);
-    const d = ab.getChannelData(0);
-    for (let i = 0; i < n; i++) {
-      const env = i < n * 0.9 ? 1 : (1 - (i - n * 0.9) / (n * 0.1));
-      d[i] = Math.sin(2 * Math.PI * freq * i / rate) * env;
-    }
-    return ab;
-  };
-  hiBuf = makeTone(1600, 0.4);
-  loBuf = makeTone(500,  0.4);
+  const n = Math.floor(rate * 0.08); // 80ms，短促尖銳
+  const ab = ctx.createBuffer(1, n, rate);
+  const d = ab.getChannelData(0);
+  for (let i = 0; i < n; i++) {
+    const env = 1 - (i / n); // 瞬間起音、線性衰減，最尖銳
+    d[i] = Math.sin(2 * Math.PI * 2800 * i / rate) * env;
+  }
+  hiBuf = ab;
 }
 
 function unlockAudio() {
@@ -410,9 +405,16 @@ function playTone(buf, when) {
   const s = ctx.createBufferSource();
   s.buffer = buf;
   const g = ctx.createGain();
-  g.gain.value = 10.0;
+  g.gain.value = 4.0;
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -6;
+  comp.knee.value = 0;
+  comp.ratio.value = 20;
+  comp.attack.value = 0;
+  comp.release.value = 0.05;
   s.connect(g);
-  g.connect(ctx.destination);
+  g.connect(comp);
+  comp.connect(ctx.destination);
   s.start(when);
 }
 
@@ -421,11 +423,10 @@ function schedulePattern() {
   buildTones(ctx);
   ctx.resume();
   const t = ctx.currentTime;
-  playTone(hiBuf, t);
-  playTone(loBuf, t + 0.4);
+  for (let i = 0; i < 4; i++) playTone(hiBuf, t + i * 0.18); // 四聲連嗶，間隔 180ms
 }
 
-function startBeeps() { schedulePattern(); S.beepIv = setInterval(schedulePattern, 800); }
+function startBeeps() { schedulePattern(); S.beepIv = setInterval(schedulePattern, 1200); } // 每 1.2s 一循環
 function stopBeeps()  { clearInterval(S.beepIv); S.beepIv = null; }
 
 /* ════════════════════════════════
